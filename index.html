@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="theme-color" content="#0f111a">
+<title>CoWatch Live v3 — External Websites</title>
+<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.15/dist/hls.min.js"></script>
+<script src="https://www.youtube.com/iframe_api"></script>
+<style>
+:root{--bg:#0f111a;--surface:#1a1d2b;--surface2:#24283b;--primary:#7c4dff;--accent:#00e5ff;--success:#00e676;--warning:#ffab00;--danger:#ff5252;--text:#eceff4;--muted:#9aa5ce;--border:#2f354d}
+*{box-sizing:border-box;font-family:system-ui,-apple-system,"Segoe UI",Tahoma,sans-serif}
+body{margin:0;background:var(--bg);color:var(--text);min-height:100vh}
+button,input{font:inherit}
+#lobby{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:18px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:24px;width:100%;max-width:470px;box-shadow:0 20px 50px #0008}
+.logo{font-size:25px;font-weight:800;color:var(--primary);margin-bottom:6px}
+.sub{font-size:13px;color:var(--muted);line-height:1.7;margin:0 0 20px}
+label{display:block;color:var(--muted);font-size:13px;margin:10px 0 6px}
+input[type=text],input[type=url]{width:100%;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:10px;padding:12px;outline:none}
+input:focus{border-color:var(--primary)}
+.btn{border:0;border-radius:10px;padding:11px 14px;font-weight:700;cursor:pointer;color:white;background:var(--primary)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.btn.secondary{background:var(--surface2);border:1px solid var(--border);color:var(--text)}
+.btn.accent{background:#00e5ff1c;color:var(--accent);border:1px solid #00e5ff66}
+.btn.danger{background:#ff52551b;color:var(--danger);border:1px solid #ff525555}
+.full{width:100%}
+.divider{text-align:center;color:var(--muted);font-size:12px;margin:15px}
+.error{display:none;background:#ff525522;border:1px solid var(--danger);padding:10px;border-radius:8px;color:#ffaaa7;margin-top:12px;font-size:13px}
+#room{display:none;height:100vh;height:100dvh;flex-direction:column}
+.topbar{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;padding:9px 13px;background:var(--surface);border-bottom:1px solid var(--border)}
+.status{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700}
+.dot{width:9px;height:9px;border-radius:50%;background:var(--warning)}
+.dot.online{background:var(--success);box-shadow:0 0 8px var(--success)}
+.actions{display:flex;gap:6px;flex-wrap:wrap}
+.chip{border-radius:8px;padding:7px 10px;font-size:12px;font-weight:700;background:var(--surface2);color:var(--text);border:1px solid var(--border);cursor:pointer}
+.workspace{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1fr) 320px}
+.stage{background:#090b10;display:flex;flex-direction:column;gap:9px;padding:11px;min-width:0;min-height:0}
+.tabs{display:flex;gap:6px;flex-wrap:wrap}
+.tab{padding:8px 12px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);color:var(--text);cursor:pointer;font-size:12px}
+.tab.active{background:#7c4dff33;border-color:var(--primary);color:#d8ccff}
+.toolbar{display:flex;gap:6px;flex-wrap:wrap}
+.toolbar input{flex:1;min-width:180px}
+.toolbar .btn{white-space:nowrap}
+.viewer{position:relative;flex:1;min-height:260px;background:#000;border:1px solid var(--border);border-radius:13px;overflow:hidden}
+#html5Player,#ytPlayerContainer,#externalFrame{width:100%;height:100%;border:0;background:#000}
+#html5Player{display:block;object-fit:contain}
+#ytPlayerContainer{display:none}
+#externalFrame{display:none}
+.external-note{font-size:12px;color:var(--muted);line-height:1.6;background:#1a1d2b;padding:8px 10px;border-radius:8px}
+.overlay{display:none;position:absolute;inset:0;background:#0f111aeF;z-index:5;align-items:center;justify-content:center;text-align:center;padding:20px}
+.overlay .inner{max-width:430px}
+.chat{background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;min-height:0}
+.chathead{padding:12px;border-bottom:1px solid var(--border);font-weight:700;font-size:14px}
+.messages{flex:1;overflow:auto;padding:12px;display:flex;flex-direction:column;gap:8px}
+.msg{max-width:88%;padding:8px 11px;border-radius:11px;font-size:13px;line-height:1.5;overflow-wrap:anywhere}
+.msg.me{align-self:flex-start;background:var(--primary)}
+.msg.peer{align-self:flex-end;background:var(--surface2)}
+.msg.sys{align-self:center;background:#ffffff0b;color:var(--muted);font-size:11px;text-align:center}
+.chatform{display:flex;gap:6px;padding:9px;border-top:1px solid var(--border)}
+.chatform input{flex:1;min-width:0}
+.chatform button{padding-inline:15px}
+@media(max-width:850px){#room{height:auto;min-height:100vh;min-height:100dvh}.workspace{grid-template-columns:1fr;grid-template-rows:minmax(55vh,1fr) 270px}.stage{min-height:55vh}.chat{min-height:270px;border-right:0;border-top:1px solid var(--border)}.viewer{min-height:300px}}
+</style>
+</head>
+<body>
+<section id="lobby">
+ <div class="card">
+  <div class="logo">🎬 CoWatch Live <small style="font-size:11px;color:var(--muted)">v3</small></div>
+  <p class="sub">مشاهدة مشتركة لشخصين: فيديو مباشر، YouTube، أو تجربة فتح مواقع خارجية مثل Wecima حسب سماح الموقع بالتضمين.</p>
+  <label>اسمك المستعار</label><input id="displayName" type="text" maxlength="24" placeholder="اكتب اسمك">
+  <button class="btn full" id="createBtn" style="margin-top:12px">إنشاء غرفة جديدة</button>
+  <div class="divider">أو انضم إلى غرفة موجودة</div>
+  <label>رمز الغرفة (6 أحرف)</label><input id="roomCodeInput" type="text" maxlength="6" placeholder="مثال: K7M9P2" style="text-align:center;text-transform:uppercase;letter-spacing:2px">
+  <button class="btn secondary full" id="joinBtn" style="margin-top:10px">دخول الغرفة</button>
+  <div id="lobbyError" class="error"></div>
+ </div>
+</section>
+
+<section id="room">
+ <header class="topbar">
+  <div class="status"><span class="dot" id="connDot"></span><span id="roomBadge">غرفة: ------</span><span id="peerStatus" style="color:var(--muted);font-weight:400">بانتظار الطرف الآخر</span></div>
+  <div class="actions">
+   <button class="chip" id="shareLinkBtn">🔗 مشاركة الرابط</button>
+   <button class="chip" id="syncNowBtn">🔄 مزامنة الآن</button>
+   <button class="chip" id="leaveBtn" style="color:var(--danger)">خروج</button>
+  </div>
+ </header>
+ <div class="workspace">
+  <main class="stage">
+   <div class="tabs">
+    <button class="tab active" data-mode="video">🎞️ فيديو</button>
+    <button class="tab" data-mode="external">🌐 مواقع خارجية</button>
+   </div>
+   <div id="videoToolbar" class="toolbar">
+    <input id="videoUrlInput" type="url" value="https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4" placeholder="رابط YouTube أو MP4 أو M3U8">
+    <button class="btn" id="loadUrlBtn">تشغيل للطرفين</button>
+    <label class="btn secondary" style="margin:0;cursor:pointer">📂 ملف من جهازي<input type="file" id="localFileInput" accept="video/*" hidden></label>
+   </div>
+   <div id="externalToolbar" class="toolbar" style="display:none">
+    <input id="externalUrlInput" type="url" placeholder="الصق رابط موقع أو صفحة حلقة HTTPS">
+    <button class="btn" id="openExternalBtn">فتح للطرفين</button>
+    <button class="btn secondary" id="openNewTabBtn">فتح في تبويب جديد</button>
+    <button class="btn accent" id="screenShareBtn">🖥️ بث الشاشة</button>
+   </div>
+   <div class="viewer">
+    <video id="html5Player" controls playsinline crossorigin="anonymous"></video>
+    <div id="ytPlayerContainer"><div id="ytPlayer"></div></div>
+    <iframe id="externalFrame" title="External website" allow="autoplay; fullscreen; picture-in-picture; encrypted-media" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>
+    <div id="autoplayOverlay" class="overlay"><div class="inner"><p>المتصفح منع التشغيل التلقائي. اضغط لتفعيل التشغيل.</p><button class="btn" id="unlockAudioBtn">🔊 تفعيل التشغيل</button></div></div>
+   </div>
+   <div id="externalNote" class="external-note" style="display:none">وضع المواقع الخارجية: لو ظهرت صفحة فارغة أو رسالة رفض، فالموقع يمنع التضمين. افتحه في تبويب جديد ثم استخدم «بث الشاشة». مشاركة الشاشة تعتمد على دعم المتصفح، وغالباً تعمل بصورة أفضل على الكمبيوتر أو تطبيق Android أصلي.</div>
+   <div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;color:var(--muted);font-size:11px"><span id="modeBadge">الوضع: HTML5</span><span>المضيف يتحكم في رابط الموقع ومزامنته</span></div>
+  </main>
+  <aside class="chat">
+   <div class="chathead">💬 الدردشة الفورية</div>
+   <div id="messages" class="messages"></div>
+   <form id="chatForm" class="chatform"><input id="chatInput" type="text" maxlength="500" placeholder="اكتب رسالة..." autocomplete="off"><button class="btn" type="submit">إرسال</button></form>
+  </aside>
+ </div>
+</section>
+
+<script>
+"use strict";
+const PEER_PREFIX="cowatch-v3-room-";
+const DRIFT_THRESHOLD_SEC=1.6;
+const PEER_CONFIG={config:{iceServers:[
+ {urls:"stun:stun.l.google.com:19302"},
+ {urls:"stun:stun1.l.google.com:19302"},
+ {urls:"stun:stun.cloudflare.com:3478"}
+]}};
+
+let peer=null,activeConn=null,activeMediaCall=null,isHost=false,currentRoomCode="",myName="";
+let activeMode="html5",currentMediaUrl="",currentExternalUrl="",ytPlayer=null,ytReady=false,hlsInstance=null;
+let suppressUntil=0,seqNumber=0,lastRemoteSeq=-1,heartbeatTimer=null,remoteStreamActive=false;
+
+const $=id=>document.getElementById(id);
+const video=$("html5Player"),ytBox=$("ytPlayerContainer"),externalFrame=$("externalFrame"),overlay=$("autoplayOverlay");
+const messages=$("messages");
+const params=new URLSearchParams(location.search);
+const inviteCode=(params.get("room")||"").toUpperCase().replace(/[^A-Z0-9]/g,"").slice(0,6);
+$("displayName").value="مشاهد-"+Math.floor(100+Math.random()*899);
+if(inviteCode.length===6)$("roomCodeInput").value=inviteCode;
+
+window.onYouTubeIframeAPIReady=()=>{
+ ytPlayer=new YT.Player("ytPlayer",{width:"100%",height:"100%",videoId:"",playerVars:{playsinline:1,rel:0},
+  events:{onReady:()=>ytReady=true,onStateChange:e=>{
+   if(activeMode!=="youtube"||Date.now()<suppressUntil)return;
+   if(e.data===YT.PlayerState.PLAYING)emitSync("PLAY");
+   if(e.data===YT.PlayerState.PAUSED)emitSync("PAUSE");
+  }}
+ });
+};
+function extractYouTubeId(url){const m=url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([A-Za-z0-9_-]{11})/);return m?m[1]:null}
+function validHttps(raw){try{const u=new URL(raw);return u.protocol==="https:"?u.href:null}catch{return null}}
+function showError(message){$("lobbyError").textContent=message;$("lobbyError").style.display="block"}
+function sys(text){appendMessage("",text,"sys")}
+function appendMessage(sender,text,type){
+ const div=document.createElement("div");div.className="msg "+type;
+ if(type!=="sys"){const name=document.createElement("b");name.textContent=sender;name.style.display="block";name.style.fontSize="11px";name.style.opacity=".8";div.appendChild(name)}
+ div.appendChild(document.createTextNode(text));messages.appendChild(div);messages.scrollTop=messages.scrollHeight;
+}
+function sendPacket(data){if(activeConn&&activeConn.open)activeConn.send(data)}
+function getPlayerState(){
+ if(activeMode==="youtube"&&ytReady&&ytPlayer&&ytPlayer.getCurrentTime){
+  const state=ytPlayer.getPlayerState();return{currentTime:ytPlayer.getCurrentTime()||0,isPlaying:state===YT.PlayerState.PLAYING||state===YT.PlayerState.BUFFERING,playbackRate:ytPlayer.getPlaybackRate?ytPlayer.getPlaybackRate():1};
+ }
+ return{currentTime:video.currentTime||0,isPlaying:!video.paused,playbackRate:video.playbackRate||1};
+}
+function emitSync(action){
+ if(Date.now()<suppressUntil||activeMode==="external"||activeMode==="stream")return;
+ const st=getPlayerState();seqNumber++;
+ sendPacket({type:"VIDEO_SYNC",seq:seqNumber,action,currentTime:st.currentTime,isPlaying:st.isPlaying,playbackRate:st.playbackRate,ts:Date.now()});
+}
+function setView(mode){
+ $("videoToolbar").style.display=mode==="video"?"flex":"none";
+ $("externalToolbar").style.display=mode==="external"?"flex":"none";
+ $("externalNote").style.display=mode==="external"?"block":"none";
+ document.querySelectorAll(".tab").forEach(b=>b.classList.toggle("active",b.dataset.mode===mode));
+}
+document.querySelectorAll(".tab").forEach(b=>b.addEventListener("click",()=>setView(b.dataset.mode)));
+
+function stopHls(){if(hlsInstance){hlsInstance.destroy();hlsInstance=null}}
+function hideAllPlayers(){
+ video.pause();video.style.display="none";ytBox.style.display="none";externalFrame.style.display="none";overlay.style.display="none";
+}
+function loadMediaSource(url,broadcast=false){
+ const safe=validHttps(url);if(!safe){alert("استخدم رابط HTTPS صحيح.");return}
+ const ytId=extractYouTubeId(safe);suppressUntil=Date.now()+1000;stopHls();video.srcObject=null;video.muted=false;
+ externalFrame.src="about:blank";
+ if(ytId){
+  activeMode="youtube";currentMediaUrl=safe;$("modeBadge").textContent="الوضع: YouTube";
+  video.pause();video.removeAttribute("src");hideAllPlayers();ytBox.style.display="block";
+  if(ytReady&&ytPlayer)ytPlayer.loadVideoById(ytId,0);
+ }else{
+  activeMode="html5";currentMediaUrl=safe;$("modeBadge").textContent=safe.toLowerCase().includes(".m3u8")?"الوضع: HLS":"الوضع: HTML5";
+  if(ytReady&&ytPlayer)ytPlayer.stopVideo();hideAllPlayers();video.style.display="block";
+  if(safe.toLowerCase().includes(".m3u8")&&window.Hls&&Hls.isSupported()){
+   hlsInstance=new Hls();hlsInstance.loadSource(safe);hlsInstance.attachMedia(video);
+  }else if(video.canPlayType("application/vnd.apple.mpegurl")&&safe.toLowerCase().includes(".m3u8")){video.src=safe}
+  else{video.src=safe}
+ }
+ $("videoUrlInput").value=safe;
+ if(broadcast)sendPacket({type:"MEDIA_LOAD",url:safe,sender:myName});
+}
+function openExternal(url,broadcast=false){
+ const safe=validHttps(url);if(!safe){alert("أدخل رابط HTTPS صحيحاً.");return}
+ activeMode="external";currentExternalUrl=safe;currentMediaUrl=safe;
+ suppressUntil=Date.now()+800;stopHls();video.pause();video.srcObject=null;
+ if(ytReady&&ytPlayer)ytPlayer.stopVideo();
+ hideAllPlayers();externalFrame.style.display="block";externalFrame.src=safe;
+ $("externalUrlInput").value=safe;$("modeBadge").textContent="الوضع: موقع خارجي";
+ setView("external");
+ if(broadcast)sendPacket({type:"EXTERNAL_NAV",url:safe,sender:myName});
+}
+function applyRemoteState(time,playing,rate,force){
+ if(activeMode==="stream"||activeMode==="external")return;
+ suppressUntil=Date.now()+700;
+ if(activeMode==="youtube"&&ytReady&&ytPlayer){
+  const cur=ytPlayer.getCurrentTime?ytPlayer.getCurrentTime():0;
+  if(force||Math.abs(cur-time)>DRIFT_THRESHOLD_SEC)ytPlayer.seekTo(time,true);
+  if(playing&&ytPlayer.getPlayerState()!==YT.PlayerState.PLAYING)ytPlayer.playVideo();
+  if(!playing&&ytPlayer.getPlayerState()===YT.PlayerState.PLAYING)ytPlayer.pauseVideo();
+  return;
+ }
+ if(Math.abs((video.playbackRate||1)-(rate||1))>.05)video.playbackRate=rate||1;
+ if((force||Math.abs((video.currentTime||0)-time)>DRIFT_THRESHOLD_SEC)&&Number.isFinite(time))try{video.currentTime=time}catch{}
+ if(playing&&video.paused)video.play().catch(()=>overlay.style.display="flex");
+ if(!playing&&!video.paused)video.pause();
+}
+function enterRoomUI(code){
+ currentRoomCode=code;$("lobby").style.display="none";$("room").style.display="flex";$("roomBadge").textContent="غرفة: "+code;
+ history.replaceState({},"",location.pathname+"?room="+code);
+ if(heartbeatTimer)clearInterval(heartbeatTimer);
+ heartbeatTimer=setInterval(()=>{if(activeConn&&activeConn.open&&activeMode!=="stream"&&activeMode!=="external"&&getPlayerState().isPlaying)emitSync("HEARTBEAT")},4000);
+}
+function bindPeerEvents(p){
+ p.on("call",call=>{
+  call.answer();
+  call.on("stream",remote=>{
+   remoteStreamActive=true;activeMode="stream";stopHls();video.pause();video.srcObject=remote;
+   hideAllPlayers();video.style.display="block";video.srcObject=remote;
+   video.play().catch(()=>overlay.style.display="flex");
+   $("modeBadge").textContent="الوضع: بث مباشر من المضيف";sys("بدأ استقبال بث الشاشة أو الفيديو المباشر.");
+  });
+  call.on("close",()=>{remoteStreamActive=false;sys("انتهى البث المباشر.")});
+  call.on("error",()=>sys("حدث خطأ في اتصال البث المباشر."));
+ });
+}
+function bindDataConnection(conn){
+ conn.on("open",()=>{
+  lastRemoteSeq=-1;$("connDot").classList.add("online");
+  if(isHost){
+   const st=getPlayerState();
+   sendPacket({type:"INIT_STATE",hostName:myName,mode:activeMode,url:currentMediaUrl,externalUrl:currentExternalUrl,currentTime:st.currentTime,isPlaying:st.isPlaying,playbackRate:st.playbackRate});
+  }else sendPacket({type:"HELLO",guestName:myName});
+ });
+ conn.on("data",data=>{
+  if(!data||typeof data!=="object")return;
+  if(data.type==="ROOM_FULL"){alert("الغرفة ممتلئة بالفعل (شخصان فقط).");peer.destroy();location.href=location.pathname;return}
+  if(data.type==="HELLO"){$("peerStatus").textContent="متصل مع: "+data.guestName+" (2/2)";sys(data.guestName+" انضم إلى الغرفة.")}
+  if(data.type==="INIT_STATE"){
+   $("peerStatus").textContent="متصل مع: "+data.hostName+" (2/2)";sys("تم الاتصال بالمضيف.");
+   if(data.mode==="external"&&data.externalUrl)openExternal(data.externalUrl,false);
+   else if(data.url&&data.mode!=="stream")loadMediaSource(data.url,false);
+   setTimeout(()=>applyRemoteState(data.currentTime||0,!!data.isPlaying,data.playbackRate||1,true),800);
+  }
+  if(data.type==="MEDIA_LOAD"&&data.url){loadMediaSource(data.url,false);sys(data.sender+" شغّل فيديو جديداً.")}
+  if(data.type==="EXTERNAL_NAV"&&data.url){openExternal(data.url,false);sys("المضيف فتح صفحة خارجية جديدة.")}
+  if(data.type==="VIDEO_SYNC"){
+   if(typeof data.seq==="number"&&data.seq<=lastRemoteSeq)return;lastRemoteSeq=data.seq;
+   const transit=data.isPlaying&&data.ts?Math.min(4,Math.max(0,(Date.now()-data.ts)/1000)):0;
+   applyRemoteState((data.currentTime||0)+transit*(data.playbackRate||1),!!data.isPlaying,data.playbackRate||1,data.action==="SEEK"||data.action==="MANUAL_SYNC");
+  }
+  if(data.type==="CHAT"&&data.text)appendMessage(data.sender,data.text,"peer");
+  if(data.type==="LIVE_STREAM_STARTED")sys(data.sender+" بدأ بثاً مباشراً: "+data.label);
+  if(data.type==="STREAM_STOPPED")sys("أوقف المضيف البث المباشر.");
+ });
+ conn.on("close",()=>{
+  $("connDot").classList.remove("online");$("peerStatus").textContent="انقطع اتصال الطرف الآخر";sys("انقطع اتصال الطرف الآخر.");activeConn=null;
+ });
+}
+function makeCode(){const chars="ABCDEFGHJKLMNPQRSTUVWXYZ23456789";return Array.from({length:6},()=>chars[Math.floor(Math.random()*chars.length)]).join("")}
+function createRoom(){
+ const btn=$("createBtn");btn.disabled=true;myName=$("displayName").value.trim()||"المضيف";isHost=true;const code=makeCode();
+ peer=new Peer(PEER_PREFIX+code,PEER_CONFIG);bindPeerEvents(peer);
+ peer.on("open",()=>{enterRoomUI(code);sys("تم إنشاء الغرفة. شارك الرابط مع صديقك.")});
+ peer.on("connection",incoming=>{
+  if(activeConn&&activeConn.open){incoming.on("open",()=>{incoming.send({type:"ROOM_FULL"});setTimeout(()=>incoming.close(),300)});return}
+  activeConn=incoming;bindDataConnection(incoming);
+ });
+ peer.on("error",err=>{btn.disabled=false;showError("تعذر إنشاء الغرفة: "+err.type)});
+}
+function joinRoom(){
+ const code=$("roomCodeInput").value.trim().toUpperCase();if(!/^[A-Z0-9]{6}$/.test(code)){showError("رمز الغرفة يجب أن يتكون من 6 أحرف أو أرقام.");return}
+ const btn=$("joinBtn");btn.disabled=true;myName=$("displayName").value.trim()||"الضيف";isHost=false;
+ peer=new Peer(PEER_CONFIG);bindPeerEvents(peer);
+ peer.on("open",()=>{const conn=peer.connect(PEER_PREFIX+code,{reliable:true});activeConn=conn;enterRoomUI(code);bindDataConnection(conn)});
+ peer.on("error",err=>{btn.disabled=false;showError("تعذر الاتصال: "+err.type+". تأكد أن المضيف فتح الغرفة.")});
+}
+$("createBtn").addEventListener("click",createRoom);$("joinBtn").addEventListener("click",joinRoom);
+$("openExternalBtn").addEventListener("click",()=>{if(!isHost){sys("المضيف فقط هو من يغيّر صفحة الموقع المتزامنة.");return}openExternal($("externalUrlInput").value,true)});
+$("openNewTabBtn").addEventListener("click",()=>{
+ const url=validHttps($("externalUrlInput").value||currentExternalUrl);if(!url){alert("أدخل رابط HTTPS أولاً.");return}
+ window.open(url,"_blank","noopener,noreferrer");sys("تم طلب فتح الموقع في تبويب جديد. إذا منع المتصفح النافذة، اسمح بفتح النوافذ المنبثقة.");
+});
+$("loadUrlBtn").addEventListener("click",()=>{if(!isHost){sys("المضيف فقط يتحكم في الفيديو.");return}loadMediaSource($("videoUrlInput").value,true)});
+$("shareLinkBtn").addEventListener("click",async()=>{
+ const url=location.origin+location.pathname+"?room="+currentRoomCode;
+ try{if(navigator.share){await navigator.share({title:"CoWatch Live",text:"تعالى نتفرج سوا",url});return}await navigator.clipboard.writeText(url);sys("تم نسخ رابط الغرفة.")}
+ catch{prompt("انسخ رابط الغرفة:",url)}
+});
+$("syncNowBtn").addEventListener("click",()=>{if(activeMode==="external"){if(isHost)sendPacket({type:"EXTERNAL_NAV",url:currentExternalUrl,sender:myName});sys("تمت إعادة إرسال رابط الموقع. مزامنة عناصر المشغل الخارجي غير مضمونة.")}else{emitSync("MANUAL_SYNC");sys("تم إرسال طلب المزامنة.")}});
+$("leaveBtn").addEventListener("click",()=>{if(activeMediaCall)activeMediaCall.close();if(peer)peer.destroy();location.href=location.pathname});
+$("chatForm").addEventListener("submit",e=>{e.preventDefault();const input=$("chatInput"),text=input.value.trim();if(!text)return;appendMessage(myName,text,"me");sendPacket({type:"CHAT",sender:myName,text});input.value=""});
+video.addEventListener("play",()=>emitSync("PLAY"));video.addEventListener("pause",()=>emitSync("PAUSE"));video.addEventListener("seeked",()=>emitSync("SEEK"));video.addEventListener("ratechange",()=>emitSync("RATE"));
+$("unlockAudioBtn").addEventListener("click",()=>{overlay.style.display="none";video.muted=false;if(activeMode==="youtube"&&ytReady)ytPlayer.playVideo();else video.play().catch(()=>{})});
+$("localFileInput").addEventListener("change",e=>{
+ if(!isHost){sys("اختيار الملف متاح للمضيف فقط.");e.target.value="";return}
+ const file=e.target.files[0];if(!file)return;stopHls();activeMode="stream";video.srcObject=null;video.src=URL.createObjectURL(file);hideAllPlayers();video.style.display="block";$("modeBadge").textContent="الوضع: بث ملف محلي";
+ video.onloadedmetadata=()=>video.play().then(()=>{
+  const stream=video.captureStream?video.captureStream():video.mozCaptureStream?video.mozCaptureStream():null;
+  if(stream)startStream(stream,file.name);else sys("متصفحك لا يدعم captureStream. يمكنك استخدام مشاركة الشاشة.");
+ }).catch(()=>{});
+});
+async function startStream(stream,label){
+ if(!peer||!activeConn||!activeConn.open){sys("لازم الطرف الآخر يكون متصلاً قبل بدء البث.");return}
+ try{if(activeMediaCall)activeMediaCall.close();activeMediaCall=peer.call(activeConn.peer,stream);sendPacket({type:"LIVE_STREAM_STARTED",label,sender:myName});sys("بدأ البث المباشر: "+label)}
+ catch(err){sys("تعذر بدء البث: "+err.message)}
+}
+$("screenShareBtn").addEventListener("click",async()=>{
+ if(!isHost){sys("المضيف فقط يبدأ مشاركة الشاشة.");return}
+ if(!navigator.mediaDevices||!navigator.mediaDevices.getDisplayMedia){sys("مشاركة الشاشة غير مدعومة في هذا المتصفح. جرّب Chrome على الكمبيوتر أو تطبيق Android أصلي.");return}
+ try{
+  const stream=await navigator.mediaDevices.getDisplayMedia({video:true,audio:true});
+  activeMode="stream";hideAllPlayers();video.style.display="block";video.srcObject=stream;video.muted=true;video.play().catch(()=>{});
+  await startStream(stream,"مشاركة شاشة الموقع");
+  stream.getVideoTracks()[0].addEventListener("ended",()=>{sendPacket({type:"STREAM_STOPPED"});if(activeMediaCall)activeMediaCall.close();sys("انتهت مشاركة الشاشة.")});
+ }catch(err){if(err.name!=="AbortError")sys("لم تبدأ مشاركة الشاشة: "+err.message)}
+});
+if(inviteCode.length===6){$("lobbyError").style.display="none"}
+</script>
+</body>
+</html>
