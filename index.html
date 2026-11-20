@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#10111b">
+<meta name="description" content="CoWatch V6 — مشاهدة مشتركة خاصة لشخصين مع نقل P2P ومزامنة مباشرة.">
+<meta name="cowatch-signal" content="">
+<link rel="stylesheet" href="/src/ui/styles.css">
+<script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.17/dist/hls.min.js"></script>
+<link rel="manifest" href="/manifest.webmanifest"><title>CoWatch V6</title>
+</head><body>
+<div id="app">
+  <section id="lobby" class="lobby">
+    <div class="brand"><span class="brand-mark">◉</span><div><strong>CoWatch</strong><small>WATCH TOGETHER</small></div><b class="version">V6</b></div>
+    <div class="hero"><p class="eyebrow">YOUR PRIVATE WATCH ROOM</p><h1>الفيلم أحلى<br><em>لما نتفرج سوا.</em></h1><p class="muted">غرفة خاصة لشخصين، دردشة ومزامنة ونقل ملفات مباشر بين الجهازين.</p></div>
+    <div class="lobby-card">
+      <label for="nickname">اسم العرض</label><input id="nickname" maxlength="24" placeholder="اكتب اسمك" autocomplete="nickname">
+      <button id="createRoom" class="primary wide">إنشاء غرفة جديدة <span>↗</span></button>
+      <div class="or"><i></i><span>أو انضم لغرفة</span><i></i></div>
+      <label for="roomCode">كود الغرفة</label><input id="roomCode" class="code-input" maxlength="6" placeholder="ABC123" autocomplete="off">
+      <button id="joinRoom" class="secondary wide">دخول الغرفة</button>
+      <p id="lobbyError" class="error" role="alert"></p>
+    </div>
+    <p class="footnote">اتصال مباشر بين الجهازين · لا يتم رفع الفيديو إلى خادم</p>
+  </section>
+  <section id="room" class="room hidden">
+    <header class="topbar"><a class="mini-brand" href="#">◉ <b>CoWatch</b> <small>V6</small></a><div class="room-meta"><span id="connectionDot" class="dot"></span><span id="roomLabel">غرفة ———</span><span id="connectionLabel" class="muted">بانتظار صديقك</span></div><div class="top-actions"><button id="copyInvite" class="icon-btn">رابط الدعوة</button><button id="leaveRoom" class="icon-btn danger">خروج</button></div></header>
+    <main class="layout">
+      <section class="watch-column">
+        <div class="room-heading"><div><p class="eyebrow">PRIVATE SESSION</p><h2>وقت المشاهدة</h2></div><div class="people"><span class="avatar" id="myAvatar">أ</span><span class="avatar guest" id="peerAvatar">؟</span><span id="peopleLabel">1 / 2</span></div></div>
+        <div class="player-shell"><video id="video" controls playsinline preload="metadata"></video><iframe id="externalFrame" class="external-frame hidden" title="External website" sandbox="allow-scripts allow-same-origin allow-forms allow-presentation" allow="autoplay; fullscreen; picture-in-picture; encrypted-media" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe><div id="emptyPlayer" class="empty-player"><div class="play-orb">▶</div><h3>اختاروا حاجة تتفرجوا عليها</h3><p>ارفع ملف أو الصق رابط فيديو مباشر</p></div><div id="playerStatus" class="player-status hidden"></div></div>
+        <div class="source-panel"><div class="source-tabs"><button class="source-tab active" data-tab="file">ملف من جهازك</button><button class="source-tab" data-tab="url">رابط فيديو</button><button class="source-tab" data-tab="external">مواقع خارجية</button><button class="source-tab" data-tab="screen">مشاركة شاشة</button></div>
+          <div id="filePanel" class="source-panel-content"><label class="file-pick">＋ <span>اختيار ملف فيديو</span><small>يُنقل كما هو دون ضغط أو تحويل</small><input id="fileInput" type="file" accept="video/*,.mkv,.mov,.avi" hidden></label><div id="transferPanel" class="transfer hidden"><div class="transfer-top"><b id="transferName">—</b><span id="transferPercent">0%</span></div><div class="progress"><i id="transferProgress"></i></div><div class="transfer-bottom"><span id="transferSpeed">جاهز</span><span id="transferEta">—</span></div></div></div>
+          <div id="urlPanel" class="source-panel-content hidden"><div class="url-row"><input id="mediaUrl" type="url" placeholder="https://example.com/video.mp4"><button id="loadUrl" class="primary">تشغيل</button></div><p class="hint">يدعم روابط الفيديو المباشرة وHLS عند توافق المصدر. YouTube له وضع تشغيل منفصل في إصدار لاحق.</p></div>
+          <div id="externalPanel" class="source-panel-content hidden"><div class="url-row"><input id="externalUrl" type="url" placeholder="https://website.example/episode"><button id="openExternal" class="primary">فتح</button><button id="openExternalTab" class="secondary">تبويب جديد</button></div><p class="hint">بعض المواقع تمنع العرض داخل الإطار. في الحالة دي افتح الموقع في تبويب مستقل وابدأ مشاركة التبويب. لا يمكن مزامنة مشغل موقع خارجي بدون تكامل رسمي منه.</p></div><div id="screenPanel" class="source-panel-content hidden"><p class="hint">مشاركة الشاشة أو تبويب المتصفح حسب دعم الجهاز والمتصفح.</p><button id="shareScreen" class="secondary">بدء مشاركة الشاشة</button> <button id="stopScreen" class="secondary hidden">إيقاف المشاركة</button></div>
+        </div>
+        <div class="player-footer"><span id="mediaCompatibility">جاهز للتشغيل</span><span id="syncState">المزامنة غير نشطة</span></div>
+      </section>
+      <aside class="social-column"><div class="social-head"><div><p class="eyebrow">TOGETHER</p><h3>الدردشة</h3></div><span class="live-pill"><i></i> LIVE</span></div><div id="chatMessages" class="chat-messages"><div class="system-message">ابدأوا جلسة المشاهدة معاً ✨</div></div><form id="chatForm" class="chat-form"><input id="chatInput" maxlength="500" placeholder="اكتب رسالة..." autocomplete="off"><button aria-label="إرسال">↑</button></form><div class="reaction-row"><button data-emoji="❤️">❤️</button><button data-emoji="😂">😂</button><button data-emoji="🔥">🔥</button><button data-emoji="👏">👏</button><button data-emoji="😮">😮</button></div><div class="privacy-note">🔒 الاتصال مباشر بين الجهازين</div></aside>
+    </main>
+  </section>
+</div>
+<script type="module" src="/src/main.js"></script>
+</body></html>
